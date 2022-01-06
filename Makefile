@@ -25,6 +25,9 @@ mingw:
 	$(DOCKER) mdashnet/mingw i686-w64-mingw32-gcc -W -Wall $(EXTRA) unit_test.c -o ut.exe
 	$(DOCKER) mdashnet/mingw wine ut.exe
 
+coverage: test
+	gcov -l -n *.gcno | sed '/^$$/d' | sed 'N;s/\n/ /'
+
 upload-coverage: coverage
 	curl -s https://codecov.io/bash | /bin/bash
 
