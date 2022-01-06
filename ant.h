@@ -59,9 +59,9 @@ static inline void ant_init(struct ant *ant) {
   memset(ant, 0, sizeof(*ant));
   for (i = 0; i < nops; i++) ant->ops[i] = op_nop;
   for (i = '0'; i < '9'; i++) ant->ops[i] = op_num;
-  ant->ops[';'] = op_pop;
-  ant->ops['+'] = op_plus;
-  ant->ops['*'] = op_mul;
+  ant->ops[(int) ';'] = op_pop;
+  ant->ops[(int) '+'] = op_plus;
+  ant->ops[(int) '*'] = op_mul;
 }
 
 static inline int ant_eval(struct ant *ant, const char *script, size_t len) {
