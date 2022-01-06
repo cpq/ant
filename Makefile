@@ -3,7 +3,7 @@ CWD ?= $(realpath $(CURDIR))
 ROOT ?= $(CWD)
 DOCKER = docker run $(DA) --rm -e WINEDEBUG=-all -v $(ROOT):$(ROOT) -w $(CWD)
 
-all: test cpp vc98 vc2017
+all: test cpp vc98 vc2017 mingw
 
 test:
 	$(CC) $(CFLAGS) unit_test.c -o ut
@@ -20,6 +20,13 @@ vc98:
 vc2017:
 	$(DOCKER) mdashnet/vc2017 wine64 cl /nologo /W3 /O2 /I. unit_test.c /Feut.exe
 	$(DOCKER) mdashnet/vc2017 wine64 ut.exe
+
+mingw:
+	$(DOCKER) mdashnet/mingw i686-w64-mingw32-gcc -W -Wall $(EXTRA) unit_test.c -o ut.exe
+	$(DOCKER) mdashnet/mingw wine ut.exe
+
+upload-coverage: coverage
+	curl -s https://codecov.io/bash | /bin/bash
 
 clean:
 	rm -rf unit_test ut *.exe *.o *.obj *.gc*

@@ -1,0 +1,25 @@
+name: build
+on: [push, pull_request]
+jobs:
+  Linux:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: make
+      run: make test++ EXTRA="-lm"
+  MacOS:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: make
+      run: make test++ upload-coverage
+  Windows:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v2
+    - name: vc2017
+      run: make vc2017
+    - name: vc98
+      run: make vc98
+    - name: mingw
+      run: make mingw
