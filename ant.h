@@ -3,6 +3,10 @@
 
 #pragma once
 
+#ifdef _WIN32
+#define inline __inline
+#endif
+
 #include <stddef.h>
 #include <stdio.h>
 #include <string.h>
