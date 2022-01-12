@@ -1,6 +1,6 @@
 CFLAGS ?= -W -Wall -Werror -Wno-deprecated -I.. -g -fsanitize=address,undefined -coverage $(EXTRA)
 CWD ?= $(realpath $(CURDIR))
-ROOT ?= $(CWD)
+ROOT ?= $(realpath $(CWD)/..)
 DOCKER = docker run $(DA) --rm -e WINEDEBUG=-all -v $(ROOT):$(ROOT) -w $(CWD)
 
 all: test cpp vc98 vc2017 mingw
@@ -24,6 +24,16 @@ vc2017:
 mingw:
 	$(DOCKER) mdashnet/mingw i686-w64-mingw32-gcc -W -Wall $(EXTRA) unit_test.c -o ut.exe
 	$(DOCKER) mdashnet/mingw wine ut.exe
+
+arduino:
+	curl -s http://downloads.arduino.cc/arduino-1.8.13-linux64.tar.xz -o /tmp/a.tgz
+	tar -xf /tmp/a.tgz
+	mv arduino-* $@
+
+uno: arduino
+	rm -rf tmp; mkdir tmp; cp ../examples/BlinkyJS/BlinkyJS.ino tmp/tmp.ino
+	cp ../elk.c ../elk.h tmp/
+	$(DOCKER) mdashnet/cc2 ./arduino/arduino --verify --board arduino:avr:nano tmp/tmp.ino
 
 coverage: test
 	gcov -l -n *.gcno | sed '/^$$/d' | sed 'N;s/\n/ /'

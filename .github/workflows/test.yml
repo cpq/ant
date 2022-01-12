@@ -6,20 +6,20 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: make
-      run: make test cpp EXTRA="-lm"
+      run: make -C test test cpp EXTRA="-lm"
   MacOS:
     runs-on: macos-latest
     steps:
     - uses: actions/checkout@v2
     - name: make
-      run: make test cpp upload-coverage
+      run: make -C test test cpp upload-coverage
   Windows:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v2
     - name: vc2017
-      run: make vc2017
+      run: make -C test vc2017
     - name: vc98
-      run: make vc98
+      run: make -C test vc98
     - name: mingw
-      run: make mingw
+      run: make -C test mingw

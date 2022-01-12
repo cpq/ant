@@ -2,7 +2,7 @@
 // All rights reserved
 
 #include <assert.h>
-#include "ant.h"
+#include "../ant.h"
 
 static void check(struct ant *ant, const char *buf, antval_t expected,
                   const char *errstr) {
@@ -15,7 +15,6 @@ int main(void) {
   struct ant ant;
   ant_init(&ant);
   printf("ant size: %d\n", (int) sizeof(ant));
-  // check(&ant, "", 0, "parse error");
   check(&ant, "", 0, "");
   check(&ant, "1", 1, "");
   check(&ant, "1 + 2", 3, "");
