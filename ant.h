@@ -18,14 +18,14 @@
 typedef long antval_t;
 
 struct ant {
-  const char *pc, *eof;
+  const char *buf, *pc, *eof;
   int tok;                   // Parsed token
   antval_t val;              // Parsed value
   antval_t vars['z' - 'a'];  // Variables
   char err[20];              // Error message
 };
 
-enum { Inv, Eof, Num, Var };  // Tokens
+enum { Inv, Eof, Num, Var, Inc, Dec, Eq };  // Tokens
 
 static inline void ant_init(struct ant *ant) {
   memset(ant, 0, sizeof(*ant));
@@ -38,13 +38,26 @@ static inline int ant_next(struct ant *ant) {
   } else if (ant->pc >= ant->eof) {
     ant->tok = Eof;
   } else {
-    while (isspace(*(unsigned char *) ant->pc)) ant->pc++;
+    while (ant->pc < ant->eof && isspace(*(unsigned char *) ant->pc)) ant->pc++;
+    if (ant->pc[0] == '/' && ant->pc[1] == '/') {
+      ant->pc += 2;
+      while (ant->pc < ant->eof && *ant->pc != '\n') ant->pc++;
+    }
     if (*ant->pc >= 'a' && *ant->pc <= 'z') {
       ant->tok = Var;
       ant->val = *ant->pc++ - 'a';
     } else if (isdigit(*(unsigned char *) ant->pc)) {
       ant->val = strtoul(ant->pc, (char **) &ant->pc, 0);
       ant->tok = Num;
+    } else if (*ant->pc == '+' && ant->pc[1] == '=') {
+      ant->tok = Inc;
+      ant->pc += 2;
+    } else if (*ant->pc == '-' && ant->pc[1] == '=') {
+      ant->tok = Dec;
+      ant->pc += 2;
+    } else if (*ant->pc == '=' && ant->pc[1] == '=') {
+      ant->tok = Eq;
+      ant->pc += 2;
     } else {
       ant->tok = *ant->pc++;
     }
@@ -53,11 +66,15 @@ static inline int ant_next(struct ant *ant) {
   return ant->tok;
 }
 
+static inline void ant_swallow(struct ant *ant) {
+  ant->tok = Inv;
+}
+
 static inline int ant_isnext(struct ant *ant, int t1, int t2) {
   int tok = ant_next(ant);
   if (tok == t1 || tok == t2) {
     // printf("consuming... %d %d %d\n", tok, t1, t2);
-    ant->tok = Inv;
+    ant_swallow(ant);
     return tok;
   } else {
     // printf("nope... %d %d %d\n", tok, t1, t2);
@@ -83,7 +100,7 @@ static inline int ant_checktok(struct ant *ant, int t1, int t2) {
 
 static inline antval_t ant_num_or_var(struct ant *ant) {
   int tok = ant_next(ant);
-  ant->tok = Inv;
+  ant_swallow(ant);
   if (tok == Var) {
     ant->val = ant->vars[ant->val];
   } else if (tok == Num) {
@@ -132,16 +149,43 @@ static inline antval_t ant_add_or_sub(struct ant *ant) {
   return ant_add_or_sub2(ant, ant_mul_or_div(ant));
 }
 
+static inline antval_t ant_eq_more_less2(struct ant *ant, antval_t res) {
+  int tok = ant_next(ant);
+  if (tok == Eq) {
+    ant_swallow(ant);
+    return res == ant_expr(ant) ? 1 : 0;
+  } else if (tok == '<') {
+    ant_swallow(ant);
+    return res < ant_expr(ant) ? 1 : 0;
+  } else if (tok == '>') {
+    ant_swallow(ant);
+    return res > ant_expr(ant) ? 1 : 0;
+  } else {
+    return ant_add_or_sub2(ant, res);
+  }
+}
+
+static inline antval_t ant_eq_more_less(struct ant *ant) {
+  return ant_eq_more_less2(ant, ant_add_or_sub(ant));
+}
+
 static inline antval_t ant_assignment(struct ant *ant) {
   if (ant_isnext(ant, Var, Inv) != Inv) {
-    int varindex = ant->val;
-    if (ant_isnext(ant, '=', Inv) != Inv) {
+    int varindex = ant->val, tok = ant_next(ant);
+    if (tok == '=') {
+      ant_swallow(ant);
       return ant->vars[varindex] = ant_expr(ant);
+    } else if (tok == Inc) {
+      ant_swallow(ant);
+      return ant->vars[varindex] += ant_expr(ant);
+    } else if (tok == Dec) {
+      ant_swallow(ant);
+      return ant->vars[varindex] -= ant_expr(ant);
     } else {
-      return ant_add_or_sub2(ant, ant->vars[varindex]);
+      return ant_eq_more_less2(ant, ant->vars[varindex]);
     }
   } else {
-    return ant_add_or_sub(ant);
+    return ant_eq_more_less(ant);
   }
 }
 
@@ -149,12 +193,25 @@ static inline antval_t ant_expr(struct ant *ant) {
   return ant_assignment(ant);
 }
 
+static inline void ant_jump(struct ant *ant) {
+  int cond = *ant->pc++, inc = *ant->pc++ == 'b' ? -1 : 1;
+  if ((cond == 't' && ant->val) || (cond != 't' && !ant->val)) {
+    const char *limit = inc > 0 ? ant->eof : ant->buf;
+    while (ant->pc != limit && *ant->pc != '#') ant->pc += inc;
+  }
+}
+
 static inline void ant_stmt_list(struct ant *ant, int etok) {
   int tok;
   while ((tok = ant_next(ant)) != etok || tok != Eof) {
     if (tok == ';') {
-      ant->tok = Inv;
+      ant_swallow(ant);
       continue;
+    } else if (tok == '#') {
+      ant_swallow(ant);
+    } else if (tok == '@') {
+      ant_swallow(ant);
+      ant_jump(ant);
     } else {
       ant->val = ant_expr(ant);
     }
@@ -162,11 +219,10 @@ static inline void ant_stmt_list(struct ant *ant, int etok) {
 }
 
 static inline antval_t ant_eval(struct ant *ant, const char *str) {
-  ant->pc = str;
+  ant->pc = ant->buf = str;
   ant->eof = &ant->pc[strlen(str)];
   ant->err[0] = '\0';
   ant->tok = Inv;
   ant_stmt_list(ant, Eof);
   return ant->val;
-  // return ant_expr(ant);
 }

@@ -31,5 +31,13 @@ int main(void) {
   check(&ant, "b = c = 17", 17, "");
   check(&ant, "c", 17, "");
   check(&ant, "b", 17, "");
+  check(&ant, "b = b + 1", 18, "");
+  check(&ant, "b -= c", 1, "");
+  check(&ant, "c += b", 18, "");
+  check(&ant, "a = 1; b = 2; a == b", 0, "");
+  check(&ant, "a = 1; b = 2; a == 1", 1, "");
+  check(&ant, "a = 1; b = 2; a < b", 1, "");
+  check(&ant, "a = 1; b = 2; a > b", 0, "");
+  check(&ant, "a=0; i=0; # a += i; i += 1; i < 10 @tb a", 45, "");
   return 0;
 }

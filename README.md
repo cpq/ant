@@ -6,6 +6,21 @@ that targets performance, small size and embedding simplicity:
 - Single C header engine with very simple API
 - Interpreted directly with near-native performance
 
+# Syntax
+
+- Infix notation
+- Arithmetics: `+`, `-`, `*`, `/`
+- Single-letter variables from `a` to `z`
+- Assignments `a = 0; b = 2;`
+- Increments and decrements `a += 2; b += a * (c + d);`
+- Labels for jumps: `#`
+- Jumps: `@XY` where `X` is either `t` for true, `f` for false, which is
+  the result of the previous expression, and `Y` is either `b` for
+  backward jump or `f` for the forward jump. Jumps are performed to the
+  nearest `#` label
+- Loops and conditionals are implemented using labels and jumps, e.g.
+  `if (a > 0) i += 1; ...` -> `a > 0 @tf i += 1 # ...`
+
 # Notes
 
 Below are major places where a scripting engine slows down in comparison
@@ -35,4 +50,6 @@ with the native code:
 5. Conditionals. Consider JavaScript's `if (cond) { body }`, where `cond` is
   false. Then, we should jump over the `body` whilst not executing it.
   If there is no compilation step, we don't know where `body` ends and therefore
-  we should "execute" the `body` without evaluating it
+  we should "execute" the `body` without evaluating it.
+  The solution is to use labels and jump commands, just like in the
+  assembly code.
