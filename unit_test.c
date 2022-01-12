@@ -1,30 +1,35 @@
 // Copyright (c) 2022 Cesanta Software Limited
 // All rights reserved
 
-#include <time.h>
+#include <assert.h>
 #include "ant.h"
 
-#if 0
-static bool ev(struct js *js, const char *expr, const char *expectation) {
-  const char *result = js_str(js, js_eval(js, expr, strlen(expr)));
-#ifdef VERBOSE
-  printf("[%s] -> [%s] [%s]\n", expr, result, expectation);
-#endif
-  return strcmp(result, expectation) == 0;
+static void check(struct ant *ant, const char *buf, antval_t expected,
+                  const char *errstr) {
+  antval_t res = ant_eval(ant, buf);
+  printf("'%s' = %ld, expected %ld (%s)\n", buf, res, expected, ant->err);
+  if (res != expected || strcmp(ant->err, errstr) != 0) exit(1);
 }
-#endif
 
 int main(void) {
-  clock_t a = clock();
   struct ant ant;
-  double ms;
-  int res;
-
   ant_init(&ant);
-  res = ant_eval(&ant, "1 2 + 4 *", 0);
-  printf("ant size: %d, eval result: %d\n", (int) sizeof(ant), res);
-
-  ms = (double) (clock() - a) * 1000 / CLOCKS_PER_SEC;
-  printf("SUCCESS. All tests passed in %g ms\n", ms);
+  printf("ant size: %d\n", (int) sizeof(ant));
+  // check(&ant, "", 0, "parse error");
+  check(&ant, "", 0, "");
+  check(&ant, "1", 1, "");
+  check(&ant, "1 + 2", 3, "");
+  check(&ant, "1 - 2", -1, "");
+  check(&ant, "6/2", 3, "");
+  check(&ant, "1 + 2 * 3", 7, "");
+  check(&ant, "(1 + 2) * 3", 9, "");
+  check(&ant, "(6 / (1 + 1)) * 3", 9, "");
+  check(&ant, "a + 1", 1, "");
+  check(&ant, "1;2", 2, "");
+  check(&ant, "a = 7", 7, "");
+  check(&ant, "a + 1", 8, "");
+  check(&ant, "b = c = 17", 17, "");
+  check(&ant, "c", 17, "");
+  check(&ant, "b", 17, "");
   return 0;
 }
