@@ -14,12 +14,10 @@ that targets performance, small size and embedding simplicity:
 - Assignments `a = 0; b = 2;`
 - Increments and decrements `a += 2; b += a * (c + d);`
 - Labels for jumps: `#`
-- Jumps: `@XY` where `X` is either `t` for true, `f` for false, which is
-  the result of the previous expression, and `Y` is either `b` for
-  backward jump or `f` for the forward jump. Jumps are performed to the
-  nearest `#` label
+- Jumps: `@f expr` jumps forward, `@b expr` jumps backward if `expr` is true.
+  Jumps are performed to the nearest `#` label
 - Loops and conditionals are implemented using labels and jumps, e.g.
-  `if (a > 0) i += 1; ...` -> `a > 0 @tf i += 1 # ...`
+  `if (a > 0) i++; ...` -> `@tf a < 0 i += 1 # ...`
 
 # Notes
 

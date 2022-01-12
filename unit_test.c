@@ -38,6 +38,6 @@ int main(void) {
   check(&ant, "a = 1; b = 2; a == 1", 1, "");
   check(&ant, "a = 1; b = 2; a < b", 1, "");
   check(&ant, "a = 1; b = 2; a > b", 0, "");
-  check(&ant, "a=0; i=0; # a += i; i += 1; i < 10 @tb a", 45, "");
+  check(&ant, "a=0; i=0; # a += i; i += 1; @b i<10; a", 45, "");
   return 0;
 }

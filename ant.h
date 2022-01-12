@@ -194,10 +194,11 @@ static inline antval_t ant_expr(struct ant *ant) {
 }
 
 static inline void ant_jump(struct ant *ant) {
-  int cond = *ant->pc++, inc = *ant->pc++ == 'b' ? -1 : 1;
-  if ((cond == 't' && ant->val) || (cond != 't' && !ant->val)) {
+  int inc = *ant->pc++ == 'b' ? -1 : 1;
+  if (ant_expr(ant)) {
     const char *limit = inc > 0 ? ant->eof : ant->buf;
     while (ant->pc != limit && *ant->pc != '#') ant->pc += inc;
+    if (*ant->pc == '#') ant->pc++;  // Skip label
   }
 }
 
