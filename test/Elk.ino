@@ -1,13 +1,17 @@
-#include "ant.h"
+extern "C" {
+#include "elk.h"
+}
 
 void setup() {
   Serial.begin(115200);
 }
 
-static long exec_ant(void) {
-  struct ant ant;
-  ant_init(&ant);
-  return ant_eval(&ant, "a=0; i=0; # a += i + i / 3; i += 1; @b i<1000; a");
+static long exec_elk(void) {
+  char buf[200];
+  struct js *js = js_create(buf, sizeof(buf));
+  jsval_t res =
+      js_eval(js, "let a=0, i=0; while(i++ < 999) a += i + i / 3; a", ~0);
+  return atol(js_str(js, res));
 }
 
 static long exec_c(void) {
@@ -28,9 +32,7 @@ static void measure_time(const char *tag, long (*fn)(void)) {
 }
 
 void loop() {
-  Serial.print("Ant size: ");
-  Serial.println(sizeof(struct ant));
-  measure_time("ant", exec_ant);
+  measure_time("elk", exec_elk);
   measure_time("c  ", exec_c);
   delay(1000);
 }

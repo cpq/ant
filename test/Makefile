@@ -30,13 +30,13 @@ arduino:
 	tar -xf /tmp/a.tgz
 	mv arduino-* $@
 
-CMD ?= --verify
 uno: arduino
-	rm -rf tmp; mkdir -p tmp/Ant; cp Ant.ino tmp/Ant ; cp ../ant.h tmp/Ant
-	$(DOCKER) mdashnet/cc2 ./arduino/arduino $(CMD) --board arduino:avr:nano tmp/Ant/Ant.ino
+	rm -rf tmp; mkdir -p tmp; cp Ant.ino tmp/tmp.ino ; cp ../ant.h tmp/
+	$(DOCKER) mdashnet/cc2 ./arduino/arduino --verify --board arduino:avr:nano tmp/tmp.ino
 
-uno2: uno
-uno2: CMD = --port /dev/ttyUSB0 --upload
+elk: arduino
+	rm -rf tmp; mkdir -p tmp; cp Elk.ino tmp/tmp.ino ; cp elk.* tmp/
+	$(DOCKER) mdashnet/cc2 ./arduino/arduino --verify --board arduino:avr:nano tmp/tmp.ino
 
 coverage: test
 	gcov -l -n *.gcno | sed '/^$$/d' | sed 'N;s/\n/ /'
@@ -45,4 +45,4 @@ upload-coverage: coverage
 	curl -s https://codecov.io/bash | /bin/bash
 
 clean:
-	rm -rf unit_test ut *.exe *.o *.obj *.gc*
+	rm -rf unit_test ut *.exe *.o *.obj *.gc* tmp
