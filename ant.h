@@ -38,28 +38,31 @@ static inline int ant_next(struct ant *ant) {
   } else if (ant->pc >= ant->eof) {
     ant->tok = Eof;
   } else {
-    while (ant->pc < ant->eof && isspace(*(unsigned char *) ant->pc)) ant->pc++;
-    if (ant->pc[0] == '/' && ant->pc[1] == '/') {
-      ant->pc += 2;
-      while (ant->pc < ant->eof && *ant->pc != '\n') ant->pc++;
-    }
-    if (*ant->pc >= 'a' && *ant->pc <= 'z') {
-      ant->tok = Var;
-      ant->val = *ant->pc++ - 'a';
-    } else if (isdigit(*(unsigned char *) ant->pc)) {
-      ant->val = strtoul(ant->pc, (char **) &ant->pc, 0);
-      ant->tok = Num;
-    } else if (*ant->pc == '+' && ant->pc[1] == '=') {
-      ant->tok = Inc;
-      ant->pc += 2;
-    } else if (*ant->pc == '-' && ant->pc[1] == '=') {
-      ant->tok = Dec;
-      ant->pc += 2;
-    } else if (*ant->pc == '=' && ant->pc[1] == '=') {
-      ant->tok = Eq;
-      ant->pc += 2;
-    } else {
-      ant->tok = *ant->pc++;
+    while (isspace(*(unsigned char *) ant->pc)) ant->pc++;
+    switch (*ant->pc) {
+      case 'a' ... 'z':
+        ant->tok = Var;
+        ant->val = *ant->pc++ - 'a';
+        break;
+      case '0' ... '9':
+        ant->val = strtoul(ant->pc, (char **) &ant->pc, 0);
+        ant->tok = Num;
+        break;
+      case '=':
+        ant->tok = ant->pc[1] == '=' ? Eq : '=';
+        ant->pc += ant->tok == Eq ? 2 : 1;
+        break;
+      case '+':
+        ant->tok = ant->pc[1] == '=' ? Inc : '+';
+        ant->pc += ant->tok == Inc ? 2 : 1;
+        break;
+      case '-':
+        ant->tok = ant->pc[1] == '=' ? Dec : '-';
+        ant->pc += ant->tok == Dec ? 2 : 1;
+        break;
+      default:
+        ant->tok = *ant->pc++;
+        break;
     }
   }
   // printf("TOK %d %c\n", ant->tok, ant->tok);
@@ -219,7 +222,23 @@ static inline void ant_stmt_list(struct ant *ant, int etok) {
   }
 }
 
+#if 0
+static inline int ant_copy(struct ant *ant, const char *str) {
+  int i = 0, j = 0;
+  while (str[i] != 0) {
+    if (isspace(*(unsigned char *) &str[i])) {
+      i++;
+    } else {
+      ant->code[j++] = str[i++];
+    }
+  }
+  ant->code[j] = '\0';
+  return j;
+}
+#endif
+
 static inline antval_t ant_eval(struct ant *ant, const char *str) {
+  // int n = ant_copy(ant, str);
   ant->pc = ant->buf = str;
   ant->eof = &ant->pc[strlen(str)];
   ant->err[0] = '\0';
