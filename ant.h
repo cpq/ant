@@ -24,12 +24,9 @@ struct ant {
   antval_t vars['z' - 'a'];  // Variables
   char err[20];              // Error message
 };
-
+#define ANT_INITIALIZER \
+  { 0, 0, 0, 0, 0, {0}, "" }
 enum { Inv, Eof, Num, Var, Inc, Dec, Eq };  // Tokens
-
-static inline void ant_init(struct ant *ant) {
-  memset(ant, 0, sizeof(*ant));
-}
 
 static inline int ant_next(struct ant *ant) {
   if (ant->tok != Inv) {
@@ -251,4 +248,149 @@ static inline antval_t ant_eval(struct ant *ant, const char *str) {
   ant->tok = Inv;
   ant_stmt_list(ant, Eof);
   return ant->val;
+}
+
+/////////////////////////////////////////////// ANT 2
+struct ant2 {
+  const char *buf, *pc, *eof;
+  antval_t vars['z' - 'a'];  // Variables
+  antval_t stack[10];        // Stack
+  int sp;                    // Stack pointer
+};
+
+#define ANT2_INITIALIZER \
+  { 0, 0, 0, {0}, {0}, 0 }
+
+static inline antval_t ant2_eval(struct ant2 *ant, const char *str) {
+  ant->pc = ant->buf = str;
+  ant->eof = &ant->pc[strlen(str)];
+  ant->sp = 0;
+  while (ant->pc < ant->eof) {
+    antval_t *v;
+    // clang-format off
+    switch (*ant->pc++) {
+      case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g':
+      case 'h': case 'i': case 'j': case 'k': case 'l': case 'm': case 'n':
+      case 'o': case 'p': case 'q': case 'r': case 's': case 't': case 'u':
+      case 'v': case 'w': case 'x': case 'y': case 'z':
+        ant->stack[ant->sp++] = ant->vars[ant->pc[-1] - 'a'];
+        break;
+      case '0': case '1': case '2': case '3': case '4':
+      case '5': case '6': case '7': case '8': case '9':
+        ant->stack[ant->sp++] = strtoul(&ant->pc[-1], (char **) &ant->pc, 0);
+        break;
+      case '=':
+        ant->vars[*ant->pc++ - 'a'] = ant->stack[--ant->sp];
+        break;
+      case '+': 
+        v = &ant->stack[ant->sp-- - 2];
+        v[0] += v[1];
+        break;
+      case '*':
+        v = &ant->stack[ant->sp-- - 2];
+        v[0] *= v[1];
+        break;
+      case '/':
+        v = &ant->stack[ant->sp-- - 2];
+        v[0] /= v[1];
+        break;
+      case '@': {
+        int inc = *ant->pc++ == 'b' ? -1 : 1;
+        const char *limit = inc > 0 ? ant->eof : ant->buf;
+        //printf("JMP %d %ld\n", ant->sp, ant->stack[ant->sp -1]);
+        if (ant->stack[--ant->sp]) {
+          while (ant->pc != limit && *ant->pc != '#') ant->pc += inc;
+        }
+        break;
+      }
+      case 'I':
+        ant->vars[*ant->pc++ - 'a']++;
+        break;
+      case '<':
+        v = &ant->stack[ant->sp-- - 2];
+        v[0] = v[0] < v[1] ? 1 : 0;
+        break;
+      case '>':
+        v = &ant->stack[ant->sp-- - 2];
+        v[0] = v[0] > v[1] ? 1 : 0;
+        break;
+      case ';':
+        ant->sp--;
+        break;
+      default: break;
+    }
+    // clang-format on
+  }
+  return ant->stack[0];
+}
+
+/////////////////////////////////////////////// ANT 3
+struct ant3 {
+  antval_t imm[10];          // Immediate values
+  antval_t vars['z' - 'a'];  // Variables
+  antval_t stack[10];        // Stack
+  int sp;
+};
+
+enum {
+  // OP       params               Description
+  Done,       //                    The end
+  IncVar,     // var_idx            Increment variable by var index
+  Assign,     // var_idx imm_idx    Assign value to a variable
+  PushVar,    // var_idx            Push variable to stack
+  PopVar,     // var_idx            Pop to variable from stack
+  PushImm,    // var_idx            Push immediate to stack
+  Plus,       //                    Add on-stack values
+  Div,        //                    Divide on-stack values
+  Pop,        //                    Pop value from stack
+  CmpVarImm,  // var_idx imm_idx    Push comparison (var - imm) result
+  Jump,       // offset             Jump if stack top is non zero
+};
+
+static inline antval_t ant3_eval(struct ant3 *ant, const unsigned char *pc) {
+  const unsigned char *saved = pc;
+  ant->sp = 0;
+  while (*pc) {
+    antval_t *v;
+    switch (*pc++) {
+      case IncVar:
+        ant->vars[*pc++]++;
+        break;
+      case PushVar:
+        ant->stack[ant->sp++] = ant->vars[*pc++];
+        break;
+      case PopVar:
+        ant->vars[*pc++] = ant->stack[--ant->sp];
+        break;
+      case PushImm:
+        ant->stack[ant->sp++] = ant->imm[*pc++];
+        break;
+      case Assign:
+        ant->vars[pc[0]] = ant->imm[pc[1]];
+        pc += 2;
+        break;
+      case Plus:
+        v = &ant->stack[ant->sp-- - 2];
+        v[0] += v[1];
+        break;
+      case Div:
+        v = &ant->stack[ant->sp-- - 2];
+        v[0] /= v[1];
+        break;
+      case CmpVarImm: {
+        antval_t var = ant->vars[*pc++], imm = ant->imm[*pc++];
+        // printf("CMP %ld %ld\n", var, imm);
+        ant->stack[ant->sp++] = var - imm;
+        break;
+      }
+      case Jump: {
+        unsigned char offset = *pc++;
+        if (ant->stack[--ant->sp]) pc = saved + offset;
+        break;
+      }
+      default:
+        break;
+    }
+  }
+  return ant->stack[0];
 }

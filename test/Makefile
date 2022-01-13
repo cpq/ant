@@ -34,10 +34,6 @@ uno: arduino
 	rm -rf tmp; mkdir -p tmp; cp Ant.ino tmp/tmp.ino ; cp ../ant.h tmp/
 	$(DOCKER) mdashnet/cc2 ./arduino/arduino --verify --board arduino:avr:nano tmp/tmp.ino
 
-uno2: arduino
-	rm -rf tmp; mkdir -p tmp; cp Ant2.ino tmp/tmp.ino ; cp ../ant2.h tmp/
-	$(DOCKER) mdashnet/cc2 ./arduino/arduino --verify --board arduino:avr:nano tmp/tmp.ino
-
 elk: arduino
 	rm -rf tmp; mkdir -p tmp; cp Elk.ino tmp/tmp.ino ; cp elk.* tmp/
 	$(DOCKER) mdashnet/cc2 ./arduino/arduino --verify --board arduino:avr:nano tmp/tmp.ino

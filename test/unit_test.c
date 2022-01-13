@@ -11,9 +11,9 @@ static void check(struct ant *ant, const char *buf, antval_t expected,
   if (res != expected || strcmp(ant->err, errstr) != 0) exit(1);
 }
 
-int main(void) {
-  struct ant ant;
-  ant_init(&ant);
+static void test_ant(void) {
+  struct ant ant = ANT_INITIALIZER;
+  // ant_init(&ant);
   printf("ant size: %d\n", (int) sizeof(ant));
   check(&ant, "", 0, "");
   check(&ant, "1", 1, "");
@@ -38,5 +38,67 @@ int main(void) {
   check(&ant, "a = 1; b = 2; a < b", 1, "");
   check(&ant, "a = 1; b = 2; a > b", 0, "");
   check(&ant, "a=0; i=0; # a += i; i += 1; @b i<10; a", 45, "");
+}
+
+static void check2(struct ant2 *ant, const char *buf, antval_t expected) {
+  antval_t res = ant2_eval(ant, buf);
+  printf("[%s] \t=> %ld %ld %d\n", buf, res, expected, ant->sp);
+  if (res != expected || ant->sp != 1) exit(1);
+}
+
+static void test_ant2(void) {
+  struct ant2 ant = ANT2_INITIALIZER;
+  printf("ant2 size: %d\n", (int) sizeof(ant));
+  check2(&ant, "1", 1);
+  check2(&ant, "1 2 +", 3);
+  check2(&ant, "7 =a 3 =b a", 7);
+  check2(&ant, "1 2 <", 1);
+  check2(&ant, "2 1 <", 0);
+  check2(&ant, "1 1 <", 0);
+  check2(&ant, "1 =a 1 @f 7 =a # a", 1);
+  check2(&ant, "1 =a 0 @f 7 =a # a", 7);
+  check2(&ant, "# 0 @b 1", 1);
+  check2(&ant, "0 =a 0 =i # a i + =a 1 i + =i i 10 < @b a", 45);
+  check2(&ant, "0 =a 0 =i # a i + =a Ii i 10 < @b a", 45);
+  check2(&ant, "0=a 0=i 1000=d  # ai+i3/+=a Ii id< @b a", 665667);
+}
+
+static void check3(struct ant3 *ant, const unsigned char *pc, antval_t exp) {
+  antval_t res = ant3_eval(ant, pc);
+  printf("%ld %ld %d\n", res, exp, ant->sp);
+  if (res != exp) exit(1);
+}
+
+static void test_ant3(void) {
+  {
+    struct ant3 ant = {{3, 1000}, {0}, {0}, 0};
+    unsigned char code[] = {IncVar, 0, PushVar, 0, Done};
+    check3(&ant, code, 1);
+  }
+  {
+    struct ant3 ant = {{3, 1000}, {0}, {0}, 0};
+    unsigned char code[] = {PushImm, 0, Done};
+    check3(&ant, code, 3);
+  }
+  {
+    struct ant3 ant = {{3, 1000}, {0}, {0}, 0};
+    unsigned char code[] = {IncVar, 1, PushVar, 1, PopVar,  0, CmpVarImm,
+                            1,      1, Jump,    0, PushVar, 0, Done};
+    check3(&ant, code, 1000);
+  }
+  {
+    struct ant3 ant = {{3, 1000}, {0}, {0}, 0};
+    unsigned char code[] = {PushVar, 0,       PushVar, 1,         Plus, PushVar,
+                            1,       PushImm, 0,       Div,       Plus, PopVar,
+                            0,       IncVar,  1,       CmpVarImm, 1,    1,
+                            Jump,    0,       PushVar, 0,         Done};
+    check3(&ant, code, 665667);
+  }
+}
+
+int main(void) {
+  test_ant();
+  test_ant2();
+  test_ant3();
   return 0;
 }
