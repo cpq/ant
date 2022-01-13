@@ -11,7 +11,7 @@ servers.
 The `ant.h` header file implements 3 engines: an infix engine (ant), a
 postfix engine (ant2) and a bytecode engine (ant3). All engines where
 tested on the Arduino XIAO board (SAMD21 Cortex-M0+ processor) by calculating
-the following routine (see [Ant.ino](testing/Ant.ino)):
+the following routine (see [Ant.ino](test/Ant.ino)):
 
 ```c
 static long exec_c(void) {
