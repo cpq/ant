@@ -39,25 +39,30 @@ static inline int ant_next(struct ant *ant) {
     ant->tok = Eof;
   } else {
     while (isspace(*(unsigned char *) ant->pc)) ant->pc++;
+    // clang-format off
     switch (*ant->pc) {
-      case 'a' ... 'z':
+      case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g':
+      case 'h': case 'i': case 'j': case 'k': case 'l': case 'm': case 'n':
+      case 'o': case 'p': case 'q': case 'r': case 's': case 't': case 'u':
+      case 'v': case 'w': case 'x': case 'y': case 'z':
         ant->tok = Var;
         ant->val = *ant->pc++ - 'a';
         break;
-      case '0' ... '9':
+      case '0': case '1': case '2': case '3': case '4':
+      case '5': case '6': case '7': case '8': case '9':
         ant->val = strtoul(ant->pc, (char **) &ant->pc, 0);
         ant->tok = Num;
         break;
       case '=':
-        ant->tok = ant->pc[1] == '=' ? Eq : '=';
+        ant->tok = ant->pc[1] == '=' ? (int) Eq : (int) '=';
         ant->pc += ant->tok == Eq ? 2 : 1;
         break;
       case '+':
-        ant->tok = ant->pc[1] == '=' ? Inc : '+';
+        ant->tok = ant->pc[1] == '=' ? (int) Inc : (int) '+';
         ant->pc += ant->tok == Inc ? 2 : 1;
         break;
       case '-':
-        ant->tok = ant->pc[1] == '=' ? Dec : '-';
+        ant->tok = ant->pc[1] == '=' ? (int) Dec : (int) '-';
         ant->pc += ant->tok == Dec ? 2 : 1;
         break;
       default:
@@ -65,6 +70,7 @@ static inline int ant_next(struct ant *ant) {
         break;
     }
   }
+  // clang-format on
   // printf("TOK %d %c\n", ant->tok, ant->tok);
   return ant->tok;
 }
