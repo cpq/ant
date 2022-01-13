@@ -70,6 +70,9 @@ static inline antval_t ant_eval(struct ant *ant, const char *str) {
         }
         break;
       }
+      case 'I':
+        ant->vars[*ant->pc++ - 'a']++;
+        break;
       case '<':
         v = &ant->stack[ant->sp-- - 2];
         v[0] = v[0] < v[1] ? 1 : 0;

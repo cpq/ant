@@ -24,5 +24,7 @@ int main(void) {
   check(&ant, "1 =a 0 @f 7 =a # a", 7);
   check(&ant, "# 0 @b 1", 1);
   check(&ant, "0 =a 0 =i # a i + =a 1 i + =i i 10 < @b a", 45);
+  check(&ant, "0 =a 0 =i # a i + =a Ii i 10 < @b a", 45);
+  check(&ant, "0=a 0=i 1000=d  # ai+i3/+=a Ii id< @b a", 665667);
   return 0;
 }
