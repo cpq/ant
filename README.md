@@ -1,12 +1,40 @@
 # Ant - a scripting engine
 
-Ant is an ultra fast and ultra small embedded scripting engine
-that targets performance, small size and embedding simplicity:
+Ant is an experiment to build an ultra fast and ultra small embedded
+scripting engine with a close-to-native performance, small size and embedding
+simplicity. Ant is implemented as a single C/C++ standard-compliant header
+file that works on any platform, starting from 8-bit AVRs to 64-bit
+servers.
 
-- Single C header engine with very simple API
-- Interpreted directly with near-native performance
+# Performance
 
-# Syntax
+The `ant.h` header file implements 3 engines: an infix engine (ant), a
+postfix engine (ant2) and a bytecode engine (ant3). All engines where
+tested on the Arduino XIAO board (SAMD21 Cortex-M0+ processor) by calculating
+the following routine (see [Ant.ino](testing/Ant.ino)):
+
+```c
+static long exec_c(void) {
+  long res = 0;
+  for (long i = 0; i < 1000; i++) res += i + i / 3;
+  return res;
+}
+```
+
+Here is the result for all 3 engines and native C implementation:
+
+```text
+ ant, result: 665667, microseconds: 114751
+ant2, result: 665667, microseconds: 42832
+ant3, result: 665667, microseconds: 14461
+   c, result: 665667, microseconds: 2020
+```
+
+This result shows that the 7x slowness of the bytecode implementation
+can be considered close-to-native, but it also suggests that the implementation
+should use compilation step to convert source code into bytecode.
+
+# Infix Syntax
 
 - Infix notation
 - Arithmetics: `+`, `-`, `*`, `/`
