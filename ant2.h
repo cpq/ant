@@ -19,87 +19,71 @@ typedef long antval_t;
 
 struct ant {
   const char *buf, *pc, *eof;
-  antval_t vars[2];                // Variables
-  antval_t stack[10];              // Variables
-  void (*ops[256])(struct ant *);  // Opcode handlers
-  char err[20];                    // Error message
-  int sp;
+  antval_t vars['z' - 'a'];  // Variables
+  antval_t stack[10];        // Stack
+  int sp;                    // Stack pointer
 };
 
-static inline void op_nop(struct ant *ant) {
-  ant->pc++;
-}
-
-static inline void op_pop(struct ant *ant) {
-  ant->pc++;
-  ant->sp--;
-}
-
-static inline void op_num(struct ant *ant) {
-  ant->stack[ant->sp++] = strtoul(ant->pc, (char **) &ant->pc, 0);
-  // printf("%d->%ld\n", ant->sp - 1, ant->stack[ant->sp - 1]);
-}
-
-static inline void op_lt(struct ant *ant) {
-  antval_t *v = &ant->stack[ant->sp - 2];
-  v[0] = v[0] < v[1] ? 1 : 0;
-  ant->sp--;
-  ant->pc++;
-}
-
-static inline void op_plus(struct ant *ant) {
-  antval_t *v = &ant->stack[ant->sp - 2];
-  v[0] += v[1];
-  ant->sp--;
-  ant->pc++;
-}
-
-static inline void op_div(struct ant *ant) {
-  antval_t *v = &ant->stack[ant->sp - 2];
-  v[0] /= v[1];
-  ant->sp--;
-  ant->pc++;
-}
-
-static inline void op_var(struct ant *ant) {
-  ant->stack[ant->sp++] = ant->vars[*(unsigned char *) ant->pc - 'a'];
-  ant->pc++;
-}
-
-static inline void op_assign(struct ant *ant) {
-  ant->pc++;
-  ant->vars[*(unsigned char *) ant->pc - 'a'] = ant->stack[--ant->sp];
-  ant->pc++;
-}
-
-static inline void op_jump(struct ant *ant) {
-  int inc = ant->pc[1] == 'b' ? -1 : 1;
-  const char *limit = inc > 0 ? ant->eof : ant->buf;
-  ant->pc += 2;
-  if (ant->stack[--ant->sp]) {
-    while (ant->pc != limit && *ant->pc != '#') ant->pc += inc;
-  }
-}
-
 static inline void ant_init(struct ant *ant) {
-  size_t i, nops = sizeof(ant->ops) / sizeof(ant->ops[0]);
   memset(ant, 0, sizeof(*ant));
-  for (i = 0; i < nops; i++) ant->ops[i] = op_nop;
-  for (i = '0'; i < '9'; i++) ant->ops[i] = op_num;
-  for (i = 'a'; i < 'z'; i++) ant->ops[i] = op_var;
-  ant->ops[(int) ';'] = op_pop;
-  ant->ops[(int) '+'] = op_plus;
-  ant->ops[(int) '/'] = op_div;
-  ant->ops[(int) '='] = op_assign;
-  ant->ops[(int) '@'] = op_jump;
-  ant->ops[(int) '<'] = op_lt;
 }
 
 static inline antval_t ant_eval(struct ant *ant, const char *str) {
   ant->pc = ant->buf = str;
   ant->eof = &ant->pc[strlen(str)];
-  ant->err[0] = '\0';
   ant->sp = 0;
-  while (ant->pc < ant->eof) ant->ops[*(unsigned char *) ant->pc](ant);
+  while (ant->pc < ant->eof) {
+    antval_t *v;
+    // clang-format off
+    switch (*ant->pc++) {
+      case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g':
+      case 'h': case 'i': case 'j': case 'k': case 'l': case 'm': case 'n':
+      case 'o': case 'p': case 'q': case 'r': case 's': case 't': case 'u':
+      case 'v': case 'w': case 'x': case 'y': case 'z':
+        ant->stack[ant->sp++] = ant->vars[ant->pc[-1] - 'a'];
+        break;
+      case '0': case '1': case '2': case '3': case '4':
+      case '5': case '6': case '7': case '8': case '9':
+        ant->stack[ant->sp++] = strtoul(&ant->pc[-1], (char **) &ant->pc, 0);
+        break;
+      case '=':
+        ant->vars[*ant->pc++ - 'a'] = ant->stack[--ant->sp];
+        break;
+      case '+': 
+        v = &ant->stack[ant->sp-- - 2];
+        v[0] += v[1];
+        break;
+      case '*':
+        v = &ant->stack[ant->sp-- - 2];
+        v[0] *= v[1];
+        break;
+      case '/':
+        v = &ant->stack[ant->sp-- - 2];
+        v[0] /= v[1];
+        break;
+      case '@': {
+        int inc = *ant->pc++ == 'b' ? -1 : 1;
+        const char *limit = inc > 0 ? ant->eof : ant->buf;
+        //printf("JMP %d %ld\n", ant->sp, ant->stack[ant->sp -1]);
+        if (ant->stack[--ant->sp]) {
+          while (ant->pc != limit && *ant->pc != '#') ant->pc += inc;
+        }
+        break;
+      }
+      case '<':
+        v = &ant->stack[ant->sp-- - 2];
+        v[0] = v[0] < v[1] ? 1 : 0;
+        break;
+      case '>':
+        v = &ant->stack[ant->sp-- - 2];
+        v[0] = v[0] > v[1] ? 1 : 0;
+        break;
+      case ';':
+        ant->sp--;
+        break;
+      default: break;
+    }
+    // clang-format on
+  }
   return ant->stack[0];
 }
