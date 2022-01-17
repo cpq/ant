@@ -6,6 +6,10 @@
 #if defined(_MSC_VER) && _MSC_VER < 1700
 #define inline __inline
 #define vsnprintf _vsnprintf
+typedef unsigned char uint8_t;
+#else
+#include <stdbool.h>
+#include <stdint.h>
 #endif
 
 #include <ctype.h>
@@ -393,4 +397,143 @@ static inline antval_t ant3_eval(struct ant3 *ant, const unsigned char *pc) {
     }
   }
   return ant->stack[0];
+}
+
+/////////////////////////////////////////////// ANT 4
+struct ant4 {
+  const char *s;  // Source code. Required by compiler
+  antval_t val;   // Parsed value. Required by compiler
+  int tok;
+
+  uint8_t *ssym, *esym;        // Symbol table
+  uint8_t *scode, *ecode;      // Code
+  antval_t *sstk, *estk, *sp;  // Stack
+};
+
+enum { AEOF, AINC, APLUS, AMUL, APUSH, APOP };
+enum { TINV, TEOF, TINC, TPLUS, TMUL, TNUM, TVAR };
+
+static inline int ant4_next(struct ant4 *ant) {
+  if (ant->tok != TINV) return ant->tok;
+  if (*ant->s == 0) return TEOF;
+  while (*ant->s == ' ') ant->s++;
+  // clang-format off
+  switch(*ant->s++) {
+#if 0
+    case 'a': case 'b': case 'c': case 'd': case 'e': case 'f': case 'g':
+    case 'h': case 'i': case 'j': case 'k': case 'l': case 'm': case 'n':
+    case 'o': case 'p': case 'q': case 'r': case 's': case 't': case 'u':
+    case 'v': case 'w': case 'x': case 'y': case 'z':
+      ant->tok = Var;
+      ant->val = *ant->pc++ - 'a';
+      break;
+#endif
+    case '0': case '1': case '2': case '3': case '4':
+    case '5': case '6': case '7': case '8': case '9':
+      ant->val = strtoul(ant->s -1, (char **) &ant->s, 0);
+      ant->tok = TNUM;
+      break;
+    case '+': ant->tok = TPLUS; break;
+    case '*': ant->tok = TMUL; break;
+    default: ant->tok = TEOF; break;
+  }
+  // clang-format on
+  // printf("tok : %d\n", ant->tok);
+  return ant->tok;
+}
+
+static inline void ant4_num(struct ant4 *ant) {
+  if (ant4_next(ant) == TNUM) {
+    ant->tok = TINV;
+    *ant->estk-- = ant->val;
+    *ant->ecode++ = APUSH;
+    *ant->ecode++ = ant->sstk - ant->estk - 1;
+    // printf("---> %ld %d\n", ant->estk[1], ant->ecode[-1]);
+  }
+}
+
+static inline void ant4_mul_div(struct ant4 *ant) {
+  ant4_num(ant);
+  if (ant4_next(ant) == TMUL) {
+    ant->tok = TINV;
+    ant4_mul_div(ant);
+    *ant->ecode++ = AMUL;
+  }
+}
+
+static inline void ant4_add_sub(struct ant4 *ant) {
+  ant4_mul_div(ant);
+  if (ant4_next(ant) == TPLUS) {
+    ant->tok = TINV;
+    ant4_add_sub(ant);
+    *ant->ecode++ = APLUS;
+  }
+}
+
+static inline void ant4_compile(struct ant4 *ant) {
+  ant->tok = TINV;
+  ant4_add_sub(ant);
+  *ant->ecode++ = 0;
+}
+
+static inline void ant4_stk(antval_t *sp, antval_t *esp, const char *msg) {
+  printf("%s", msg);
+  while (sp > esp) printf("%ld ", *sp--);
+  putchar('\n');
+}
+
+static inline antval_t ant4_exec(struct ant4 *ant) {
+  antval_t *sp = ant->estk, *esp = ant->sstk;
+  uint8_t *pc = ant->scode;
+  sp[0] = 0;
+  // ant4_stk(esp, sp, "BEFORE EXEC ");
+  while (*pc) {
+    switch (*pc++) {
+      case APOP:
+        sp[0] = esp[-*pc++];
+        sp++;
+        // ant4_stk(esp, sp, "POP ");
+        break;
+      case APUSH:
+        sp[0] = esp[-*pc++];
+        sp--;
+        // ant4_stk(esp, sp, "PUSH ");
+        break;
+      case APLUS:
+        sp[2] += sp[1];
+        sp++;
+        // ant4_stk(esp, sp, "PLUS ");
+        break;
+      case AMUL:
+        sp[2] *= sp[1];
+        sp++;
+        // ant4_stk(esp, sp, "MUL ");
+        break;
+      default:
+        break;
+    }
+  }
+  return ant->estk[0];
+}
+
+static inline antval_t ant4_eval(struct ant4 *ant, const char *str) {
+  // printf("=========================== EVAL %s\n", str);
+  ant->s = str;
+  ant4_compile(ant);
+  return ant4_exec(ant);
+}
+
+static size_t ant_roundup(size_t size, size_t align) {
+  return (size + align - 1) / align * align;
+}
+
+static inline struct ant4 *ant4_create(void *buf, size_t len) {
+  struct ant4 *ant = (struct ant4 *) buf;
+  size_t align = sizeof(antval_t);
+  if (len < sizeof(*ant) + 2 * sizeof(antval_t)) return NULL;
+  ant->ssym = ant->esym =
+      &((uint8_t *) buf)[ant_roundup(len - align - 1, align)];
+  ant->scode = ant->ecode = (uint8_t *) (ant + 1);
+  ant->sstk = ant->estk = (antval_t *) ant->ssym;
+  return ant;
 }

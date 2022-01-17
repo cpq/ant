@@ -96,9 +96,28 @@ static void test_ant3(void) {
   }
 }
 
+static void check4(const char *buf, antval_t expected) {
+  char tmp[200];
+  struct ant4 *ant = ant4_create(tmp, sizeof(tmp));
+  antval_t res = ant4_eval(ant, buf);
+  printf("[%s] \t=> %ld %ld\n", buf, res, expected);
+  if (res != expected) exit(1);
+}
+
+static void test_ant4(void) {
+  // printf("%s %d\n", __func__, (int) ((char *) ant->estk - (char *) ant));
+  check4("", 0);
+  check4("0", 0);
+  check4("17", 17);
+  check4("1 + 2", 3);
+  check4("1 + 2 + 3", 6);
+  check4("1 + 2 + 3 * 4", 15);
+}
+
 int main(void) {
   test_ant();
   test_ant2();
   test_ant3();
+  test_ant4();
   return 0;
 }
