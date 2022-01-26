@@ -399,6 +399,67 @@ static inline antval_t ant3_eval(struct ant3 *ant, const unsigned char *pc) {
   return ant->stack[0];
 }
 
+// Using computed goto. Available on GCC and Clang
+#if defined(__GNUC__) || defined(__clang__)
+static inline antval_t ant3_eval2(struct ant3 *ant, const unsigned char *pc) {
+  void *tab[] = {&&Done, &&IncVar, &&Assign, &&PushVar,   &&PopVar, &&PushImm,
+                 &&Plus, &&Div,    &&Pop,    &&CmpVarImm, &&Jump};
+  const unsigned char *saved = pc;
+  antval_t *v;
+  ant->sp = 0;
+  goto *tab[*pc++];
+IncVar:
+  // printf("INC\n");
+  ant->vars[*pc++]++;
+  goto *tab[*pc++];
+PushVar:
+  // printf("PushV\n");
+  ant->stack[ant->sp++] = ant->vars[*pc++];
+  goto *tab[*pc++];
+PopVar:
+  // printf("PopV\n");
+  ant->vars[*pc++] = ant->stack[--ant->sp];
+  goto *tab[*pc++];
+PushImm:
+  // printf("PushImm\n");
+  ant->stack[ant->sp++] = ant->imm[*pc++];
+  goto *tab[*pc++];
+Assign:
+  // printf("Assign\n");
+  ant->vars[pc[0]] = ant->imm[pc[1]];
+  pc += 2;
+  goto *tab[*pc++];
+Plus:
+  // printf("Plus\n");
+  v = &ant->stack[ant->sp-- - 2];
+  v[0] += v[1];
+  goto *tab[*pc++];
+Div:
+  // printf("Div\n");
+  v = &ant->stack[ant->sp-- - 2];
+  v[0] /= v[1];
+  goto *tab[*pc++];
+Pop:
+  // printf("Pop\n");
+  goto *tab[*pc++];
+CmpVarImm : {
+  antval_t var = ant->vars[*pc++], imm = ant->imm[*pc++];
+  // printf("CMP %ld %ld\n", var, imm);
+  ant->stack[ant->sp++] = var - imm;
+  goto *tab[*pc++];
+}
+Jump : {
+  unsigned char offset = *pc++;
+  // printf("Jump\n");
+  if (ant->stack[--ant->sp]) pc = saved + offset;
+  goto *tab[*pc++];
+}
+Done:
+  // printf("Done\n");
+  return ant->stack[0];
+}
+#endif  // __GNUC__ or __clang__
+
 /////////////////////////////////////////////// ANT 4
 struct ant4 {
   const char *s;  // Source code. Required by compiler

@@ -21,12 +21,14 @@ static long exec_c(void) {
 }
 ```
 
-Here is the result for all 3 engines and native C implementation:
+Here is the result for all 3 engines and native C implementation. Note
+that antx is the same as ant3 but using computed goto feature.
 
 ```text
- ant, result: 665667, microseconds: 114751
-ant2, result: 665667, microseconds: 42832
-ant3, result: 665667, microseconds: 14461
+ ant, result: 665667, microseconds: 115434
+ant2, result: 665667, microseconds: 41908
+ant3, result: 665667, microseconds: 14548
+antx, result: 665667, microseconds: 14542
    c, result: 665667, microseconds: 2020
 ```
 

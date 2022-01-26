@@ -64,9 +64,17 @@ static void test_ant2(void) {
 }
 
 static void check3(struct ant3 *ant, const unsigned char *pc, antval_t exp) {
-  antval_t res = ant3_eval(ant, pc);
-  printf("%ld %ld %d\n", res, exp, ant->sp);
+  struct ant3 saved = *ant;
+  printf("ANT3 check...\n");
+  antval_t res = ant3_eval(&saved, pc);
+  printf("  %ld %ld %d\n", res, exp, saved.sp);
   if (res != exp) exit(1);
+#if defined(__GNUC__) || defined(__clang__)
+  saved = *ant;
+  res = ant3_eval2(&saved, pc);
+  printf("  %ld %ld %d\n", res, exp, saved.sp);
+  if (res != exp) exit(1);
+#endif
 }
 
 static void test_ant3(void) {
